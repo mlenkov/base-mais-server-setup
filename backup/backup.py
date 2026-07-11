@@ -58,6 +58,29 @@ def _check_restic() -> bool:
     return True
 
 
+def _restic_version() -> tuple:
+    result = _run(["restic", "version"], timeout=10)
+    if result.returncode != 0:
+        return (0, 0, 0)
+    ver_str = result.stdout.strip().split()
+    for part in ver_str:
+        if part[0].isdigit():
+            parts = part.split(".")
+            if len(parts) == 3:
+                return tuple(int(p) for p in parts)
+            elif len(parts) == 2:
+                return (int(parts[0]), int(parts[1]), 0)
+    return (0, 0, 0)
+
+
+def _restic_backup_args() -> list:
+    version = _restic_version()
+    args = ["backup"]
+    if version >= (0, 15, 0):
+        args.extend(["--read-concurrency", "2"])
+    return args
+
+
 def _check_rclone() -> bool:
     result = _run(["rclone", "version"], timeout=10)
     if result.returncode != 0:
@@ -152,7 +175,7 @@ def cmd_create(args):
             print("   ⚠️  Инициализация S3 репозитория...")
             _restic_run(["init"], env=s3_env)
 
-        result = _restic_run(["backup", "--read-concurrency", "2"] + exclude_args + sources, env=s3_env)
+        result = _restic_run(_restic_backup_args() + exclude_args + sources, env=s3_env)
         if result.returncode == 0:
             print(f"   ✅ S3 backup завершён")
         else:
@@ -220,7 +243,7 @@ def _yadisk_backup(sources: list, restic_pass: str, token: str, remote_path: str
         print("   ⚠️  Инициализация Yandex Disk репозитория...")
         _restic_run(["init"], env=env)
 
-    result = _restic_run(["backup", "--read-concurrency", "2"] + exclude_args + sources, env=env)
+    result = _restic_run(_restic_backup_args() + exclude_args + sources, env=env)
     if result.returncode == 0:
         print(f"   ✅ Yandex Disk backup завершён (restic + rclone)")
     else:
@@ -345,7 +368,12 @@ def cmd_restore(args):
         print(f"📋 Использую последний snapshot: {snapshot_id}")
 
     print(f"🔄 Восстановление из {source} (snapshot: {snapshot_id}) -> {target}")
-    result = _restic_run(["restore", "--read-concurrency", "2", snapshot_id, "--target", target], env=restic_env)
+    restore_args = ["restore", snapshot_id, "--target", target]
+    version = _restic_version()
+    if version >= (0, 15, 0):
+        restore_args.insert(1, "--read-concurrency")
+        restore_args.insert(2, "2")
+    result = _restic_run(restore_args, env=restic_env)
 
     if source == "yadisk":
         Path(restic_env.get("RCLONE_CONFIG", "")).unlink(missing_ok=True)

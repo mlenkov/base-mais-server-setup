@@ -116,9 +116,22 @@ table inet filter {
   chain forward { type filter hook forward priority 0; policy drop; }
   chain output { type filter hook output priority 0; policy accept; }
 }
+include "/etc/nftables.d/*.nft"
 EOF
 systemctl enable --now nftables 2>&1 || true
 nft -f /etc/nftables.conf 2>&1 || true
+
+# Docker bridge forward rules (чтобы не блокировать трафик контейнеров)
+mkdir -p /etc/nftables.d
+cat > /etc/nftables.d/99-docker-bridge.nft << 'NFTEOF'
+#!/usr/sbin/nft -f
+# Managed by base-mais-server-setup
+add rule inet filter forward iifname "br-*" counter accept
+add rule inet filter forward oifname "br-*" counter accept
+add rule inet filter forward iifname "docker0" counter accept
+add rule inet filter forward oifname "docker0" counter accept
+NFTEOF
+nft -f /etc/nftables.d/99-docker-bridge.nft 2>/dev/null || true
 
 $PYTHON_BIN cis/manager.py audit --format json
 
