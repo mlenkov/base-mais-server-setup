@@ -56,20 +56,21 @@ This server is managed by **AI Employee** using GitHub Actions CI/CD.
 
 ## 🔑 Secrets Management
 
-All secrets are securely stored in **Bitwarden Secrets Manager**.
+Secrets are stored in a local `.env` file (root:root, chmod 600) and distributed
+to `/opt/secrets/<app>.env` for application-layer services.
 
 ### Configured Secrets
-- cloud.ru S3 (access_key, secret_key, bucket, endpoint)
+- S3 (access_key, secret_key, bucket, endpoint)
 - Yandex Disk OAuth token
 - Restic encryption password
-- GitHub PAT
+- App-layer secrets (BIFROST_* → /opt/secrets/bifrost.env)
 
 ## 📁 Project Structure
 
 ```
 ├── deploy/                 # Provisioning (removed after deploy)
 │   ├── deploy.sh           # Orchestrator
-│   ├── secrets.py          # Bitwarden sync
+│   ├── secrets.py          # Local .env manager
 │   ├── docs_generator.py   # SERVER.md generator
 │   └── templates/
 │       └── server.md       # Documentation template
@@ -96,8 +97,7 @@ All secrets are securely stored in **Bitwarden Secrets Manager**.
 
 ```bash
 # Run full provisioning:
-#   BW_ACCESS_TOKEN="xxx" ssh app.mais.agency \
-#     "sudo bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/mlenkov/cloud.ru-free-tier-vm/main/deploy.sh)\""
+#   ssh app.mais.agency "sudo bash deploy/deploy.sh"
 
 # Run CIS audit
 python3 cis_manager.py audit

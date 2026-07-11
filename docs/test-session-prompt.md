@@ -10,13 +10,12 @@
 IP: 91.224.87.211
 SSH user: mais
 SSH key: ~/.ssh/MacBuka
-BW_ACCESS_TOKEN: 0.6e3719e7-f47a-42e3-b650-b47e00fed076.DlnbeCArEFhvzW1GCHgR4F3YoqJEBT:VKIXCtkhwFTO41rzMgbZLA==
 ```
 
 Выполни шаги:
 
 1. SSH на сервер (с `-o ServerAliveInterval=60`), перейти в `~` и сделать `git pull`
-2. Запустить: `sudo BW_ACCESS_TOKEN="<токен>" bash deploy/deploy.sh`
+2. Запустить: `sudo bash deploy/deploy.sh`
 3. Дождись полного завершения deploy.sh
 
 После завершения составь отчёт со следующими секциями:
@@ -25,8 +24,8 @@ BW_ACCESS_TOKEN: 0.6e3719e7-f47a-42e3-b650-b47e00fed076.DlnbeCArEFhvzW1GCHgR4F3Y
 - IP, hostname, версия ОС
 
 ### Secrets
-- Сколько секретов синхронизировано из Bitwarden
-- Какие именно (список ключей)
+- Валидирован ли .env
+- Созданы ли файлы в /opt/secrets/
 
 ### CIS Audit
 - Результаты до fix (PASS/FAIL/Error)
@@ -49,8 +48,7 @@ BW_ACCESS_TOKEN: 0.6e3719e7-f47a-42e3-b650-b47e00fed076.DlnbeCArEFhvzW1GCHgR4F3Y
 - Время инициализации
 
 ### Что должно работать (все фиксы применены)
-- Secrets 7/7 с оригинальными ключами
-- CIS 59/59 (100%) + fail2ban с systemd backend
+- CIS 59/59 (100%)
 - Backup: S3 + Yandex Disk (две копии, без локальной)
 - AIDE: автоматическая активация БД (poll до 5 мин)
 - `backup.py status`: работает от любого пользователя (cron через sudo)
@@ -61,7 +59,7 @@ BW_ACCESS_TOKEN: 0.6e3719e7-f47a-42e3-b650-b47e00fed076.DlnbeCArEFhvzW1GCHgR4F3Y
 ```bash
 ssh -o ServerAliveInterval=60 -i ~/.ssh/MacBuka mais@91.224.87.211
 cd ~ && git pull
-sudo BW_ACCESS_TOKEN="<токен>" python3 deploy/tests/test_deploy.py
+sudo python3 deploy/tests/test_deploy.py
 ```
 Скрипт сделает снепшот → deploy → CIS fix loop → audit → rollback → verify → re-deploy → отчёт.
 

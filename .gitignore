@@ -1,5 +1,7 @@
 # Secrets
 .env
+.env.*
+/opt/secrets/
 
 # CIS audit data
 cis/data/

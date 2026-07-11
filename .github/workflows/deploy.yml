@@ -1,19 +1,17 @@
-# GitHub Actions Pipeline for VPS Fortify
-# AI Employee автоматически настраивает сервер под CIS стандарты
-# Запускается при пуше в main или по расписанию
+# GitHub Actions Pipeline — CIS audit + backup + docs
+# Requires GitHub Secrets: RESTIC_PASSWORD, S3_ACCESS_KEY, S3_SECRET_KEY, etc.
 
-name: VPS Fortify Deploy
+name: Server Provisioning
 
 on:
   push:
     branches: [main, develop]
   schedule:
-    - cron: "0 2 * * *"   # Ежедневно в 2:00
-  workflow_dispatch:        # Ручной запуск
+    - cron: "0 2 * * *"
+  workflow_dispatch:
 
 env:
   CIS_TARGET: 95
-  BW_ACCESS_TOKEN: ${{ secrets.BW_ACCESS_TOKEN }}
 
 jobs:
   setup:
@@ -32,11 +30,17 @@ jobs:
           pip install -r requirements.txt
           sudo apt-get update && sudo apt-get install -y restic
 
-      - name: Sync secrets from Bitwarden
-        run: python3 deploy/secrets.py sync
-        env:
-          BW_ACCESS_TOKEN: ${{ secrets.BW_ACCESS_TOKEN }}
-          BW_ORG_ID: ${{ secrets.BW_ORG_ID }}
+      - name: Create .env from secrets
+        run: |
+          cat > .env << EOF
+          RESTIC_PASSWORD='${{ secrets.RESTIC_PASSWORD }}'
+          S3_ACCESS_KEY='${{ secrets.S3_ACCESS_KEY }}'
+          S3_SECRET_KEY='${{ secrets.S3_SECRET_KEY }}'
+          S3_BUCKET='${{ secrets.S3_BUCKET }}'
+          S3_ENDPOINT='${{ secrets.S3_ENDPOINT }}'
+          YANDEX_DISK_TOKEN='${{ secrets.YANDEX_DISK_TOKEN }}'
+          EOF
+          chmod 600 .env
 
       - name: Run CIS audit
         run: python3 cis/manager.py audit --format json
@@ -95,11 +99,17 @@ jobs:
           pip install -r requirements.txt
           sudo apt-get update && sudo apt-get install -y restic
 
-      - name: Sync secrets
-        run: python3 deploy/secrets.py sync
-        env:
-          BW_ACCESS_TOKEN: ${{ secrets.BW_ACCESS_TOKEN }}
-          BW_ORG_ID: ${{ secrets.BW_ORG_ID }}
+      - name: Create .env from secrets
+        run: |
+          cat > .env << EOF
+          RESTIC_PASSWORD='${{ secrets.RESTIC_PASSWORD }}'
+          S3_ACCESS_KEY='${{ secrets.S3_ACCESS_KEY }}'
+          S3_SECRET_KEY='${{ secrets.S3_SECRET_KEY }}'
+          S3_BUCKET='${{ secrets.S3_BUCKET }}'
+          S3_ENDPOINT='${{ secrets.S3_ENDPOINT }}'
+          YANDEX_DISK_TOKEN='${{ secrets.YANDEX_DISK_TOKEN }}'
+          EOF
+          chmod 600 .env
 
       - name: Create backup
         run: python3 backup/backup.py create
@@ -133,7 +143,7 @@ jobs:
       - name: Commit documentation
         run: |
           git config --global user.name "AI Employee"
-          git config --global user.email "devops@cloud.ru-free-tier-vm"
+          git config --global user.email "devops@base-mais-server-setup"
           git add README.md
           git commit -m "docs: update README with latest CIS audit results" || echo "No changes"
           git push

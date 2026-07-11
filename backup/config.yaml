@@ -1,6 +1,6 @@
 # Backup 1-2-1 Configuration
 # Несекретные настройки — в этом файле.
-# Credentials (access_key, secret_key, token) — в BSM / .env.
+# Credentials (access_key, secret_key, token) — в .env.
 
 backup:
   strategy: 1-2-1

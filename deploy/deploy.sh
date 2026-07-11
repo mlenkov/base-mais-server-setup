@@ -1,21 +1,20 @@
 #!/bin/bash
-# cloud.ru-free-tier-vm — Server provisioning & CIS audit
+# base-mais-server-setup — Server provisioning & CIS audit
 # Usage:
-#   sudo BW_ACCESS_TOKEN="xxx" bash deploy/deploy.sh
+#   sudo bash deploy/deploy.sh
 #
 # Or from SSH:
 #   ssh user@host
 #   sudo apt update && sudo apt install -y git
-#   git clone <repo-url> .   # e.g. https://github.com/mlenkov/cloud.ru-free-tier-vm.git
-#   sudo BW_ACCESS_TOKEN="xxx" bash deploy/deploy.sh
+#   git clone <repo-url> .   # e.g. https://github.com/mlenkov/base-mais-server-setup.git
+#   sudo bash deploy/deploy.sh
 
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
 
 # === Server mode: must run as root ===
-# Pass BW_ACCESS_TOKEN explicitly through sudo (env var BEFORE sudo is lost)
 if [ "$EUID" -ne 0 ]; then
-    exec sudo BW_ACCESS_TOKEN="${BW_ACCESS_TOKEN:-}" bash "$0" "$@"
+    exec sudo bash "$0" "$@"
 fi
 
 ORIGINAL_USER="${SUDO_USER:-$(who am i | awk "{print \$1}")}"
@@ -43,7 +42,7 @@ if [ -d "$SUB_DIR" ]; then
     shopt -u dotglob 2>/dev/null || true
 fi
 
-echo "===== cloud.ru-free-tier-vm — Server Provisioning ====="
+echo "===== base-mais-server-setup — Server Provisioning ====="
 
 # Clean dpkg locks from any previous interrupted install
 rm -f /var/lib/dpkg/lock /var/lib/dpkg/lock-frontend \
@@ -75,27 +74,8 @@ pip install --upgrade pip -q
 pip install -q -r requirements.txt
 PYTHON_BIN=/opt/provisioning-venv/bin/python3
 
-if [ -z "${BW_ACCESS_TOKEN:-}" ]; then
-    echo "⚠️  BW_ACCESS_TOKEN не задан. Секреты не синхронизируются."
-    echo "   Введите токен сейчас или нажмите Enter чтобы пропустить:"
-    read -rsp "   BW_ACCESS_TOKEN: " BW_ACCESS_TOKEN
-    echo
-    export BW_ACCESS_TOKEN
-fi
-
-if [ -n "${BW_ACCESS_TOKEN:-}" ]; then
-    $PYTHON_BIN deploy/secrets.py sync || echo "⚠️  BSM sync не удался, продолжаю..."
-fi
-
-if [ -f .env ]; then
-    set -a; source .env 2>/dev/null || true; set +a
-else
-    echo "⚠️  .env не найден. Backup будет работать только с облачными хранилищами."
-    echo "   Создайте .env вручную (формат в README.md → Секреты):"
-    echo "   cat > .env << 'EOF'"
-    echo "   restic/password='мой_пароль'"
-    echo "   EOF"
-fi
+$PYTHON_BIN deploy/secrets.py sync
+set -a; source .env 2>/dev/null || true; set +a
 
 $PYTHON_BIN cis/manager.py audit --format json
 $PYTHON_BIN cis/manager.py fix --force
@@ -131,7 +111,7 @@ mkdir -p "$DOCS_DIR"
 cp docs/SERVER.md "$DOCS_DIR/" 2>/dev/null || true
 
 # Cleanup deploy artifacts (one-shot, not needed on running server)
-rm -rf "$PROJECT_DIR/deploy" "$PROJECT_DIR/.gitignore"
+rm -rf "$PROJECT_DIR/deploy"
 rm -rf "$PROJECT_DIR/.git" "$PROJECT_DIR/.github" "$PROJECT_DIR/requirements.txt"
 
 # Отключаем тяжёлый мониторинг (Free-Tier: Immutable Infrastructure)

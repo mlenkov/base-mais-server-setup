@@ -1,46 +1,50 @@
-# ADR-004: Secrets management — BSM + manual .env merge
+# ADR-004: Secrets management — Local .env + /opt/secrets/ distribution
 
 ## Статус
 Accepted
 
 ## Контекст
-Проект управляет 7+ секретами: restic/password, cloudru/s3/access-key, cloudru/s3/secret-key,
-cloudru/s3/tenant-id, cloudru/s3/bucket, cloudru/s3/endpoint, yandex/disk/token,
-github/token. Некоторые пользователи не используют Bitwarden Secrets Manager.
+Проект управляет секретами: RESTIC_PASSWORD, S3_ACCESS_KEY, S3_SECRET_KEY,
+S3_BUCKET, S3_ENDPOINT, YANDEX_DISK_TOKEN, а также app-layer секретами
+(BIFROST_* и другими). Внешние менеджеры секретов создают SPOF и усложняют
+развёртывание.
 
 Требования:
-- BW_ACCESS_TOKEN никогда не сохранять на диск
-- BSM опционально — без него deploy работает с локальным backup
-- Ручной .env должен быть совместим с BSM (и BSM может перезаписать устаревшие значения)
+- Убрать внешние зависимости при развертывании
+- Единственный источник правды — локальный `.env` в корне репозитория
+- App-слой (Repo 1) ожидает секреты в `/opt/secrets/<app>.env`
+- Безопасное хранение: chmod 600, root:root
 
 ## Решение
-Двухслойная система с merge и BSM priority:
+Однослойная система с локальным `.env` и автоматической дистрибуцией:
 
-1. `secrets.py sync` — читает существующий `.env` → запрашивает BSM → мерджит (BSM перезаписывает) → пишет `.env` (chmod 600)
-2. Кастомные ключи из `.env` (которых нет в BSM) сохраняются — нестираемый merge
-3. `deploy.sh` — sync не фатален (`|| true`), если `.env` пуст после sync — нотация с примером
-4. `secrets.py` — pure functions `_merge_env`, `_parse_env`, `_format_env` вынесены в тестируемые unit-функции
+1. `deploy/secrets.py template` — создаёт `.env` с шаблоном (chmod 600), если его нет
+2. `deploy/secrets.py validate` — проверяет наличие обязательных ключей (RESTIC_PASSWORD)
+3. `deploy/secrets.py sync` — читает `.env`, валидирует, генерирует `/opt/secrets/<app>.env`
+
+**Формат ключей:** стандартный ENV без слэшей (`RESTIC_PASSWORD`, `S3_ACCESS_KEY`).
+
+**Дистрибуция:** переменные с префиксом `BIFROST_` → `/opt/secrets/bifrost.env`
+с отрезанным префиксом (`BIFROST_OPENAI_KEY` → `OPENAI_KEY`).
 
 Поток:
 ```
-.env (manual) → secrets.py sync → BSM override → merged .env
-                                                     ↓
-                                              deploy.sh source .env
-                                                     ↓
-                                              backup.py / cis_manager.py
+.env (root:root 600) → secrets.py sync → /opt/secrets/bifrost.env (root:root 600)
+                                           /opt/secrets/<app>.env
+                                                    ↓
+                                            App-слой (Repo 1)
 ```
 
 ## Альтернативы
-- **Only BSM**: hard dependency, не работает без интернета/токена
-- **Only .env**: секреты в незашифрованном файле (хоть и chmod 600), нет централизованного управления
+- **Bitwarden Secrets Manager**: SPOF, требует токена и доступа к API
 - **Hashicorp Vault**: overkill для single-VPS, сложный bootstrap
-- **Mozilla SOPS**: требует GPG/KMS, нет BSM-подобного API
+- **Mozilla SOPS**: требует GPG/KMS, нет потоковой дистрибуции
 - **Ansible Vault**: зависит от Ansible, проект без Ansible
 
 ## Последствия
-- BSM опционально — deploy работает без него (local backup only)
-- `.env` — root:root chmod 600, никогда не попадает в репозиторий
-- Merge идемпотентен — повторный sync не дублирует ключи
-- Кастомные env-ключи сохраняются при sync (не только BSM-ключи)
-- Тесты: 20 unit-тестов для merge/parse/format логики
-- BW_ACCESS_TOKEN — только env var, не пишется на диск (агент передаёт через `sudo BW_ACCESS_TOKEN=...`)
+- Нет внешних зависимостей — deploy работает без интернета (кроме apt)
+- `.env` — root:root chmod 600, никогда не попадает в репозиторий (.gitignore)
+- `/opt/secrets/` — root:root chmod 700, файлы chmod 600
+- Restic настроен на бэкап `/opt/secrets/`
+- При отсутствии `.env` deploy.sh падает с понятной ошибкой
+- Secrets.py — 3 команды: sync, validate, template

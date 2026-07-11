@@ -242,27 +242,27 @@ checks:
       description: "Needrestart установлен"
       required: true
 
-# Секреты (из Bitwarden Secrets Manager)
+# Секреты (из .env)
 secrets:
   required:
+    - name: "restic_password"
+      secret_key: "RESTIC_PASSWORD"
+      description: "Restic encryption password"
     - name: "s3_access_key"
-      secret_key: "cloudru/s3/access_key"
-      description: "S3 Access Key (tenant-id:access-key)"
+      secret_key: "S3_ACCESS_KEY"
+      description: "S3 Access Key"
     - name: "s3_secret_key"
-      secret_key: "cloudru/s3/secret_key"
+      secret_key: "S3_SECRET_KEY"
       description: "S3 Secret Key"
     - name: "s3_bucket"
-      secret_key: "cloudru/s3/bucket"
+      secret_key: "S3_BUCKET"
       description: "S3 bucket name"
     - name: "s3_endpoint"
-      secret_key: "cloudru/s3/endpoint"
+      secret_key: "S3_ENDPOINT"
       description: "S3 endpoint URL"
     - name: "ya_disk_token"
-      secret_key: "yandex/disk/token"
+      secret_key: "YANDEX_DISK_TOKEN"
       description: "Yandex Disk OAuth token"
-    - name: "restic_password"
-      secret_key: "restic/password"
-      description: "Restic encryption password"
 
 # Скрипты автоматизации
 scripts:

@@ -212,11 +212,9 @@ class SystemSnapshot:
         return {"passed": 0, "failed": 0, "errors": 0, "compliance_score": 0}
 
 
-def run_deploy(ssh: SSHClient, token: str = "") -> tuple:
+def run_deploy(ssh: SSHClient) -> tuple:
     _info("Running deploy...")
-    env_var = f"BW_ACCESS_TOKEN={token}" if token else "BW_ACCESS_TOKEN=skip"
-    cmd = f"env {env_var} bash deploy/deploy.sh"
-    rc, out, err = ssh.run(cmd, timeout=600, sudo=True)
+    rc, out, err = ssh.run("bash deploy/deploy.sh", timeout=600, sudo=True)
     if rc != 0:
         print(f"  deploy exit code: {rc}")
         if err:
@@ -254,8 +252,6 @@ def cmd_test(args):
     conn = load_connection()
     ssh = SSHClient(conn)
     attempts = args.attempts or MAX_ATTEMPTS
-    token = os.environ.get("BW_ACCESS_TOKEN", "")
-
     for attempt in range(1, attempts + 1):
         print(f"\n{'='*60}")
         print(f"  Attempt {attempt}/{attempts}")
@@ -267,7 +263,7 @@ def cmd_test(args):
         snap_before.capture(ssh)
         print_summary("Before deploy", snap_before.audit)
 
-        run_deploy(ssh, token)
+        run_deploy(ssh)
 
         snap_after = SystemSnapshot()
         snap_after.capture(ssh)
