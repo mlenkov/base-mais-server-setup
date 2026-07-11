@@ -16,8 +16,8 @@ CIS (Center for Internet Security) — де-факто стандарт для h
 - `cis/manager.py` — audit, fix, history, rollback, с подсчётом compliance (target 95%)
 - Конвейер в `deploy.sh`: audit → fix → audit → check_compliance
 
-Проверки охватывают: целостность (AIDE), core dumps, ASLR, fs layout, sudo, PAM, SSH,
-systemd, auditd, cron, journald, network (sysctl, nftables), fail2ban, apparmor, updates.
+Проверки охватывают: core dumps, ASLR, fs layout, sudo, PAM, SSH,
+systemd, cron, journald, network (sysctl, nftables), fail2ban, apparmor, updates.
 
 ## Альтернативы
 - **CIS Level 2**: 167 checks, многие нарушают работу (например, модули ядра). Избыточно.

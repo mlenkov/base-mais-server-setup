@@ -37,13 +37,13 @@ Execute sequentially:
      sudo bash deploy/deploy.sh"
 2. Verify: 59/59 PASS, 100% compliance
 3. Verify backup: cron @ 2am, status (python3 backup/backup.py status)
-4. Verify AIDE: /var/lib/aide/aide.db exists
+4. Verify ZRAM: zramctl (compressed swap active, no disk swap)
 5. Verify nftables: sudo nft list ruleset
 6. Verify monitor cron: sudo crontab -l | grep monitor
 7. Create ADRs in docs/adr/:
    - 001-cis-debian-12-level-1.md — почему этот профиль
    - 002-nftables-instead-of-fail2ban.md — key-only SSH + default-deny
-   - 003-aide-background-init.md — background + poll
+   - 003-aide-background-init.md — Immutable Infrastructure (AIDE отключён)
    - 004-secrets-management.md — Local .env + /opt/secrets/ distribution
    - 005-1-2-1-backup.md — restic, S3 + Yandex
    - 006-s3-yandex-optional.md — graceful skip
@@ -69,7 +69,7 @@ After deploy, create ADRs in `docs/adr/`. Use `docs/adr/000-template.md` as form
 |-----|-------|-------------------|
 | 001 | CIS Debian 12 Level 1 | `cis/standard.yaml`, `cis/manager.py` |
 | 002 | nftables instead of fail2ban | `deploy/deploy.sh` (nftables.conf generation) |
-| 003 | AIDE background init + poll | `deploy/deploy.sh` (aideinit loop) |
+| 003 | AIDE background init + poll | `deploy/deploy.sh` (Immutable Infrastructure — AIDE отключён) |
 | 004 | Secrets management | `deploy/secrets.py`, `deploy/deploy.sh` (Local .env → /opt/secrets/) |
 | 005 | 1-2-1 backup strategy | `backup/config.yaml`, `backup/backup.py` |
 | 006 | S3 + Yandex Disk optional | `backup/backup.py` (graceful skip) |

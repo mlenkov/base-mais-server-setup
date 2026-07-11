@@ -28,12 +28,12 @@ PROJECT_DIR="$ORIGINAL_HOME"
 DOCS_DIR="$ORIGINAL_HOME/docs"
 
 # Detect origin URL (for forkers)
-REPO_URL="${REPO_URL:-$(git remote get-url origin 2>/dev/null || echo 'https://github.com/mlenkov/cloud.ru-free-tier-vm.git')}"
+REPO_URL="${REPO_URL:-$(git remote get-url origin 2>/dev/null || echo 'https://github.com/mlenkov/base-mais-server-setup.git')}"
 
 # Auto-relocate if cloned into subdirectory (git clone without .)
-SUB_DIR="$PROJECT_DIR/cloud.ru-free-tier-vm"
+SUB_DIR="$PROJECT_DIR/base-mais-server-setup"
 if [ -d "$SUB_DIR" ]; then
-    echo "→ Обнаружена подпапка cloud.ru-free-tier-vm, перемещаю содержимое..."
+    echo "→ Обнаружена подпапка base-mais-server-setup, перемещаю содержимое..."
     shopt -s dotglob 2>/dev/null || true
     for f in "$SUB_DIR"/*; do
         [ -e "$f" ] && mv -f "$f" "$PROJECT_DIR/" 2>/dev/null || true
@@ -54,10 +54,32 @@ apt-get update -qq 2>/dev/null || true
 apt-get install -y -qq \
   -o Dpkg::Options::="--force-confdef" \
   -o Dpkg::Options::="--force-confold" \
-  git python3 python3-pip python3-venv restic rclone curl \
-  chrony needrestart unattended-upgrades nftables
+  git python3 python3-venv restic rclone curl \
+  chrony needrestart unattended-upgrades nftables zram-tools
 
-# Journald — жесткое ограничение логов (30 ГБ SSD Free-Tier)
+# === ZRAM: compressed swap in RAM (save SSD IOPS) ===
+echo "⚡ Настройка ZRAM..."
+cat > /etc/default/zram-tools << 'ZRAMEOF'
+# ZRAM configuration for Free-Tier (cloud.ru): save SSD IOPS
+ALGO=zstd
+PERCENT=50
+PRIORITY=100
+ZRAMEOF
+
+# Remove any existing disk-based swap (kills SSD IOPS)
+swapoff -a 2>/dev/null || true
+sed -i '/swap/d' /etc/fstab 2>/dev/null || true
+
+systemctl enable --now zramswap 2>/dev/null || true
+
+# Kernel params for ZRAM: aggressive page compression, keep VFS cache
+cat > /etc/sysctl.d/99-zram.conf << 'SYSCTLEOF'
+vm.swappiness=60
+vm.vfs_cache_pressure=50
+SYSCTLEOF
+sysctl --system 2>/dev/null || true
+
+# === Journald — жесткое ограничение логов (30 ГБ SSD Free-Tier) ===
 mkdir -p /etc/systemd/journald.conf.d
 cat > /etc/systemd/journald.conf.d/99-mais.conf << 'EOF'
 [Journal]
@@ -114,14 +136,10 @@ cp docs/SERVER.md "$DOCS_DIR/" 2>/dev/null || true
 rm -rf "$PROJECT_DIR/deploy"
 rm -rf "$PROJECT_DIR/.git" "$PROJECT_DIR/.github" "$PROJECT_DIR/requirements.txt"
 
-# Отключаем тяжёлый мониторинг (Free-Tier: Immutable Infrastructure)
-systemctl disable --now auditd 2>/dev/null || true
-apt-get remove -y --purge --auto-remove auditd aide 2>/dev/null || true
-
 # Удаление пакетов разработки (не нужны на production)
 apt-get remove -y --purge --auto-remove \
   build-essential gcc g++ python3-dev \
-  python3-pip python3-setuptools python3-wheel 2>/dev/null || true
+  python3-wheel 2>/dev/null || true
 
 # Мониторинг здоровья (диск, память, load)
 (crontab -l 2>/dev/null || true

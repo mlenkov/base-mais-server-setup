@@ -56,7 +56,6 @@
 | Updates | 4 | unattended-upgrades, needrestart, auto-reboot |
 | Core Dumps | 4 | fs.suid_dumpable, limits.conf |
 | Banners | 4 | issue, issue.net, sshd Banner |
-| Audit | 6 | aide, auditd, rsyslog |
 
 **Команды:**
 ```bash
@@ -124,8 +123,6 @@ python3 deploy/secrets.py template
 | Проблема | Решение |
 |----------|---------|
 | dpkg conffile prompt | `DEBIAN_FRONTEND=noninteractive` (уже в deploy.sh) |
-| pip externally-managed | `--break-system-packages` (уже в deploy.sh) |
-| aideinit 100% CPU | `aideinit --background`, проверь через 5 мин |
 | Compliance < 100% | `audit` → `fix --force` → `audit` |
 | No space left | `apt clean` + `journalctl --vacuum-time=7d` |
 | restore не работает | проверь `restic check`, `restic unlock` |

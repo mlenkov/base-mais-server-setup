@@ -12,11 +12,13 @@ backup:
     - /opt/secrets
     - /opt/docker/ghost/data
 
-  # Исключения — временные данные, кэш, логи (экономия 15 ГБ S3 Free-Tier)
+  # Исключения — временные данные, кэш, логи, venv (экономия 15 ГБ S3 Free-Tier)
   exclude:
     - /opt/docker/*/logs
     - /opt/docker/*/cache
     - /var/log
+    - /var/cache
+    - /opt/provisioning-venv
     - /tmp
 
   # Расписание (cron)

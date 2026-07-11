@@ -40,7 +40,7 @@
 
 Этот проект делает за вас всю грязную работу. Запустите `deploy.sh` — и через 5 минут у вас:
 
-✅ **CIS Debian 12 Level 1** — 59 автоматических проверок безопасности (SSH, UFW, AIDE, auditd).  
+✅ **CIS Debian 12 Level 1** — 59 автоматических проверок безопасности (SSH, UFW, nftables).  
 ✅ **1-2-1 Backup** — ежедневные бэкапы в S3 и Yandex Disk с автоматическим rotation.  
 ✅ **Local Secret Management** — все пароли и ключи в `.env` (chmod 600), автоматически распределяются в `/opt/secrets/`.  
 ✅ **Auto-Documentation** — живой `SERVER.md` с актуальным состоянием вашей инфраструктуры.
@@ -60,7 +60,7 @@
 | **CIS Hardening** | Автоматическое применение 59 проверок Level 1 | Защита от 95% типичных атак, прохождение аудитов |
 | **1-2-1 Backup** | S3 + Yandex Disk с rotation, без локальной копии | RPO < 24h, RTO < 1h, защита от ransomware, экономия SSD |
 | **Local Secrets** | `.env` → `/opt/secrets/` с chmod 600 | Никаких секретов в репозитории, никаких внешних зависимостей |
-| **AIDE Monitoring** | Мониторинг целостности файловой системы | Детектирование взлома в реальном времени |
+| **ZRAM** | Сжатый swap в RAM (zstd, 50% RAM) | Нет I/O wait от swap на SSD, защита от OOM |
 | **Auto-Documentation** | Генерация `SERVER.md` с live-данными | Всегда актуальная документация для команды |
 
 ---
@@ -76,8 +76,7 @@ graph LR
     D -->|FAIL| E[CIS Fix Loop]
     E --> D
     D -->|PASS| F(Setup Restic + Cron)
-    F --> G(Init AIDE)
-    G --> H(Generate SERVER.md)
+    F --> G(Generate SERVER.md)
 ```
 
 ### Стратегия 1-2-1 Backup
@@ -205,7 +204,7 @@ chmod 600 .env
 > Эти команды предназначены для продвинутого использования, отладки и ежедневных операций. Для первичной настройки достаточно `deploy.sh`.
 
 ### `deploy/deploy.sh` — полный pipeline (entry point)
-**Что делает:** Установка одной командой. Зависимости, секреты, CIS fix, backup, AIDE, документация.
+**Что делает:** Установка одной командой. Зависимости, секреты, ZRAM, CIS fix, backup, документация.
 После завершения удаляет себя и CI/CD артефакты с сервера.
 **Когда использовать:** Первичная настройка или полный reset сервера.
 
@@ -268,8 +267,8 @@ python3 deploy/docs_generator.py       # Генерация docs/SERVER.md (live
 | Симптом | Причина | Решение |
 |---------|---------|---------|
 | `dpkg conffile prompt` | Пакет перезаписывает конфиг | `DEBIAN_FRONTEND=noninteractive` (уже в `deploy.sh`) |
-| `pip externally-managed` | PEP 668 на Debian 12 | `--break-system-packages` (уже в `deploy.sh`) |
-| `aideinit` 100% CPU | AIDE инициализирует БД | `aideinit --background`, проверьте через 5 мин |
+| `pip install` fails | Выход из venv | Активируйте `/opt/provisioning-venv/bin/activate` |
+| ZRAM не активен | `zram-tools` не настроен | `zramctl` — проверьте статус, `systemctl restart zramswap` |
 | Compliance < 100% | Fix не применился | `audit` → `fix --force` → `audit` (цикл) |
 | `.env not found` | Нет .env файла | `python3 deploy/secrets.py template`, заполните, запустите снова |
 | No space left | Логи или apt кеш | `apt clean && journalctl --vacuum-time=7d` |
