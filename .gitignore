@@ -1,0 +1,28 @@
+# Secrets
+.env
+
+# CIS audit data
+cis/data/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE & AI
+.vscode/
+.idea/
+.opencode/
+
+# Temp
+.gigacode/
+*.tar.gz
+/tmp/rclone_yadisk_*
+
+# Server-generated docs (contains IP, hostname, HW specs)
+docs/SERVER.md
+docs/connection.md

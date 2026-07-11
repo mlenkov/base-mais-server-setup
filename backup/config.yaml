@@ -1,0 +1,41 @@
+# Backup 1-2-1 Configuration
+# Несекретные настройки — в этом файле.
+# Credentials (access_key, secret_key, token) — в BSM / .env.
+
+backup:
+  strategy: 1-2-1
+
+  # Что бекапим — добавляй новые сервисы сюда
+  sources:
+    - /etc
+    - /home
+    - /opt/secrets
+    - /opt/docker/ghost/data
+
+  # Исключения — временные данные, кэш, логи (экономия 15 ГБ S3 Free-Tier)
+  exclude:
+    - /opt/docker/*/logs
+    - /opt/docker/*/cache
+    - /var/log
+    - /tmp
+
+  # Расписание (cron)
+  schedule: "0 2 * * *"
+
+  # Retention политика
+  retention:
+    keep_daily: 7
+    keep_weekly: 4
+    keep_monthly: 3
+    keep_yearly: 1
+
+  # Copy 1: cloud.ru S3 Object Storage
+  s3:
+    bucket: ""                    # имя бакета
+    endpoint: ""                  # URL endpoint (без https://)
+    prefix: ""                    # префикс ключей внутри бакета (опционально)
+    region: ru-central-1
+
+  # Copy 2: Yandex Disk (offsite)
+  yandex_disk:
+    path: /backups/cloud.ru-free-tier-vm   # удалённый путь
